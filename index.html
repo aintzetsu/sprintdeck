@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SprintDeck — Drag-and-Drop Kanban &amp; Issue Workspace</title>
+  <meta name="description" content="SprintDeck is a fast, keyboard-friendly Kanban sprint planner with HTML5 drag-and-drop columns, list view, priority/tag filters, story-point tracking, and localStorage persistence." />
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%236366f1'/%3E%3Crect x='7' y='8' width='5' height='16' rx='1.5' fill='%23ffffff'/%3E%3Crect x='14' y='8' width='5' height='11' rx='1.5' fill='%23ffffff'/%3E%3Crect x='21' y='8' width='5' height='14' rx='1.5' fill='%23ffffff'/%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles/tokens.css" />
+  <link rel="stylesheet" href="styles/main.css" />
+  <script defer src="js/data.js"></script>
+  <script defer src="js/app.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="container topbar__inner">
+      <div class="brand">
+        <span class="brand__mark" aria-hidden="true">SD</span>
+        <span>SprintDeck</span>
+        <span class="sprint-pill">CYCLE 24</span>
+      </div>
+
+      <div class="topbar__actions">
+        <button id="theme-toggle" type="button" class="btn btn--ghost">Light Mode</button>
+        <button id="reset-sprint-btn" type="button" class="btn btn--secondary">Reset Demo</button>
+        <button id="new-issue-btn" type="button" class="btn btn--primary">+ New Issue</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container workspace-head">
+    <section class="sprint-banner" aria-label="Sprint velocity">
+      <div>
+        <strong style="font-size: 1.05rem;">Core Platform Release — Cycle 24</strong>
+        <p style="margin: 0.2rem 0 0; font-size: 0.85rem; color: var(--ink-muted);">
+          Drag cards between columns or click any issue to reassign status, priority, and story points.
+        </p>
+      </div>
+
+      <div class="sprint-meter">
+        <div>
+          <span id="sprint-progress-pct" class="mono" style="font-weight: 700; font-size: 1.05rem;">0%</span>
+          <span id="sprint-progress-pts" class="mono" style="display: block; font-size: 0.74rem; color: var(--ink-muted);">0 / 0 pts</span>
+        </div>
+        <div class="meter-track" aria-hidden="true">
+          <div id="sprint-meter-fill" class="meter-fill" style="width: 0%;"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="toolbar" aria-label="Filter and view controls">
+      <div class="toolbar__left">
+        <label for="issue-search" class="sr-only">Search issues</label>
+        <input id="issue-search" type="search" class="search-input" placeholder="Search issues or assignee..." />
+
+        <select id="prio-filter" class="select" aria-label="Filter by priority">
+          <option value="all">All Priorities</option>
+          <option value="urgent">Urgent</option>
+          <option value="high">High</option>
+          <option value="medium">Medium</option>
+          <option value="low">Low</option>
+        </select>
+
+        <div class="filter-pills" role="group" aria-label="Filter by tag">
+          <button type="button" class="pill is-active" data-tag-filter="all" aria-pressed="true">All</button>
+          <button type="button" class="pill" data-tag-filter="frontend" aria-pressed="false">Frontend</button>
+          <button type="button" class="pill" data-tag-filter="api" aria-pressed="false">API</button>
+          <button type="button" class="pill" data-tag-filter="design" aria-pressed="false">Design</button>
+          <button type="button" class="pill" data-tag-filter="bug" aria-pressed="false">Bug</button>
+        </div>
+      </div>
+
+      <div class="segmented" role="group" aria-label="Switch view">
+        <button type="button" class="is-active" data-view="board" aria-pressed="true">Board</button>
+        <button type="button" data-view="list" aria-pressed="false">List</button>
+      </div>
+    </section>
+  </main>
+
+  <section class="container board-wrap" aria-label="Sprint workspace">
+    <div id="board-view" class="board-grid"></div>
+
+    <div id="list-view" class="list-table-wrap" hidden>
+      <table class="list-table">
+        <thead>
+          <tr>
+            <th>Key</th>
+            <th>Title</th>
+            <th>Status</th>
+            <th>Priority</th>
+            <th>Tag &amp; Owner</th>
+          </tr>
+        </thead>
+        <tbody id="list-body"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Create / Edit Issue Modal -->
+  <div id="issue-modal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="issue-modal-title" aria-hidden="true">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h2 id="issue-modal-title">Create Sprint Issue</h2>
+        <button id="close-issue-modal" type="button" class="btn btn--ghost">Close</button>
+      </div>
+
+      <form id="issue-form" class="field-grid">
+        <div class="field">
+          <label for="f-title">Issue Title</label>
+          <input id="f-title" name="title" type="text" placeholder="e.g. Add webhook retry backoff" required />
+        </div>
+        <div class="field">
+          <label for="f-desc">Description</label>
+          <textarea id="f-desc" name="description" placeholder="Acceptance criteria or implementation notes..."></textarea>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="f-status">Column / Status</label>
+            <select id="f-status" name="status">
+              <option value="backlog">Backlog</option>
+              <option value="in_progress">In Progress</option>
+              <option value="in_review">In Review</option>
+              <option value="done">Done</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="f-prio">Priority</label>
+            <select id="f-prio" name="priority">
+              <option value="Urgent">Urgent</option>
+              <option value="High">High</option>
+              <option value="Medium" selected>Medium</option>
+              <option value="Low">Low</option>
+            </select>
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="f-tag">Tag</label>
+            <select id="f-tag" name="tag">
+              <option value="Frontend">Frontend</option>
+              <option value="API">API</option>
+              <option value="Design">Design</option>
+              <option value="Bug">Bug</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="f-points">Story Points</label>
+            <input id="f-points" name="points" type="number" min="1" max="13" value="3" />
+          </div>
+        </div>
+        <div class="field">
+          <label for="f-assignee">Assignee Initials</label>
+          <input id="f-assignee" name="assignee" type="text" maxlength="3" value="AK" />
+        </div>
+
+        <div style="display: flex; gap: 0.6rem; margin-top: 0.25rem;">
+          <button id="delete-issue-btn" type="button" class="btn btn--danger" hidden>Delete</button>
+          <button type="submit" class="btn btn--primary" style="flex: 1;">Save Issue</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" role="status" hidden></div>
+</body>
+</html>
